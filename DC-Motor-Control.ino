@@ -11,40 +11,45 @@ int directionSwitchState = 0;
 int prevDirectionSwitchState = 0;
 int motorEnabled = 0;
 int motorSpeedTarget = 0;
+int motorSpeed = 0;
 int motorDirection = 1;
 int currentSpeed = 0;
 int previousSpeed = 0;
+long totalErrorIntegral = 0;
 
 int pControl(int motorTargetSpeed, int currentSpeed){
   const int tauP = .5;
-  const int error = 0;
+  int error = 0;
   //Compute Error and Update
   error = currentSpeed - motorTargetSpeed;
-  -error * tau;
-  return 0;
+  return -error * tau;
 }
 
-int PDcontrol(int motorTargetSpeed, int previousSpeed, int currentSpeed){
+int dControl(int motorTargetSpeed, int previousSpeed, int currentSpeed){
   const int tauD = 3;
-  //Place holder return statement
-
-  //We'll need to call pControl
-  pControl(motorTargetSpeed, currentSpeed);
-  
-  return 0;
+  int error = 0;
+  //Assume a timestep of one unit between the two speed mesurements deltaSpeedError/deltaTime
+  error = (currentSpeed - motorTargetSpeed) - (previousSpeed - motorTargetSpeed);
+  return error;
 }
 
-int PIDcontrol(int motorTargetSpeed){
-  int targetspeed = 0;
+//This sounds like an Apple control... we need to pass in the total integral term
+//Do we need to worry about an overflow of the errorIntegral?
+int iControl(int motorTargetSpeed, long errorIntegral){
+  int error = 0;
   
   //Place holder return statement
-  return targetspeed;
+  return error;
 }
 
 int getSpeed(){
   int measuredSpeed = 0;
-  //Some function to check our speed sensor of choice
-
+  //Some function to check our speed sensor of choice, ideally an encoder with great resolution
+  //If the speed is low enough return 0 to prevent an aliasing type of issue
+  /*if(){
+    measuredSpeed = 0;
+  }
+  */
   return measuredSpeed;
 }
 
@@ -91,8 +96,8 @@ void loop() {
   if(motorEnabled == 1){
     //Now we'll call our control algorithm of choice here
     //Functions can be grouped in an array and we can select amongst them with a function pointer
-    
-    analogWrite(enablePin, motorSpeedTarget);
+    motorSpeed += pControl(motorTargetSpeed, currentSpeed)+ dControl(motorTargetSpeed, currentSpeed, previousSpeed);     
+    analogWrite(enablePin, motorSpeed);
   }
   else{
     analogWrite(enablePin, 0);
