@@ -30,16 +30,19 @@ int dControl(int motorTargetSpeed, int previousSpeed, int currentSpeed){
   int error = 0;
   //Assume a timestep of one unit between the two speed mesurements deltaSpeedError/deltaTime
   error = (currentSpeed - motorTargetSpeed) - (previousSpeed - motorTargetSpeed);
-  return error;
+  return error * tauD;
 }
 
 //This sounds like an Apple control... we need to pass in the total integral term
-//Do we need to worry about an overflow of the errorIntegral?
-int iControl(int motorTargetSpeed, long errorIntegral){
-  int error = 0;
-  
-  //Place holder return statement
-  return error;
+//We need to return both tauI*errorIntegral and we need to update the errorIntegral (but let's avoid global variables)
+long * iControl(int currentSpeed, int motorTargetSpeed, long errorIntegral){
+  long returnArray[2];
+  const int tauI = .5;
+  int error = currentSpeed - motorTargetSpeed;
+  errorIntegral += error;
+  returnArray[0] = errorIntegral * tauI;
+  returnArray[1] = errorIntegral;
+  return returnArray;
 }
 
 int getSpeed(){
@@ -95,8 +98,12 @@ void loop() {
   //Now actually run the motor, for now we write the targetSpeed, 
   if(motorEnabled == 1){
     //Now we'll call our control algorithm of choice here
-    //Functions can be grouped in an array and we can select amongst them with a function pointer
-    motorSpeed += pControl(motorTargetSpeed, currentSpeed)+ dControl(motorTargetSpeed, currentSpeed, previousSpeed);     
+    //Currently using PID
+    long *iControlResults;
+    iControlResults = iControl(currentSpeed, motorTargetSpeed, errorIntegral);
+    motorSpeed -= pControl(motorTargetSpeed, currentSpeed) - dControl(motorTargetSpeed, currentSpeed, previousSpeed) - *iControlResults;
+    //Update Error Integral Term
+    errorIntegral = *(iControlResults + 1);    
     analogWrite(enablePin, motorSpeed);
   }
   else{
